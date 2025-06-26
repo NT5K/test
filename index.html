@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Gyroscope Demo with Upright Text</title>
+  <title>Gyroscope Demo – Inverse Tilt</title>
   <style>
     /* ---------- Global layout ---------- */
     html, body {
@@ -84,17 +84,29 @@
       const valuesEl  = document.getElementById("values");
       const statusEl  = document.getElementById("status");
 
-      /* ---------------- Orientation → keep tilting text upright ---------------- */
+      /*
+       * -------------------------------------------------------------
+       *  Orientation handling – make text appear vertical when phone
+       *  is flat (screen up) and neutral when phone is upright.
+       * -------------------------------------------------------------
+       *
+       *  ‣ e.beta  : front‑to‑back tilt  (‑180 → 180). Approximately  0 when
+       *              the phone lies flat screen‑up, +90 when upright.
+       *  ‣ We want:
+       *        phone flat   (β≈0)   → text rotated +90° about X (vertical)
+       *        phone upright(β≈90)  → text 0° about X (no rotation)
+       *  ‣ Formula:   adjustedX = 90 − β
+       */
       function onOrientation(e) {
-        let beta  = e.beta  || 0; // X‑axis front/back (‑180 → 180)
-        let gamma = e.gamma || 0; // Y‑axis left/right (‑90 → 90)
+        let beta  = e.beta  ?? 0; // front/back tilt
+        let gamma = e.gamma ?? 0; // left/right tilt
 
-        // Clamp extremes to avoid brutal stretches
-        beta  = Math.max(Math.min(beta, 60), -60);
+        // Clamp gamma so text doesn’t skew too far sideways
         gamma = Math.max(Math.min(gamma, 60), -60);
 
-        // Apply inverse so the plane faces the viewer
-        tiltingEl.style.transform = `rotateX(${-beta}deg) rotateY(${gamma}deg)`;
+        const adjustedX = 90 - beta; // core inverse‑tilt magic ✨
+
+        tiltingEl.style.transform = `rotateX(${adjustedX}deg) rotateY(${gamma}deg)`;
       }
 
       /* ---------------- Gyroscope stats ---------------- */
@@ -114,7 +126,6 @@
       }
 
       function requestMotionPermissionIfNeeded(cb) {
-        // iOS 13+ requires a user gesture, others prompt automatically.
         if (
           typeof DeviceMotionEvent !== "undefined" &&
           typeof DeviceMotionEvent.requestPermission === "function"
@@ -138,7 +149,6 @@
         requestMotionPermissionIfNeeded(initSensors);
       }
 
-      // On iOS: tie to a user gesture so permission prompt works.
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       if (isIOS) {
         statusEl.textContent = "Tap to enable motion sensors ✋";
