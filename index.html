@@ -3,74 +3,92 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Gyroscope Stats</title>
+  <title>Always‑Flat Text Demo</title>
   <style>
+    /* ----- Layout & typography ----- */
     html, body {
       height: 100%;
       margin: 0;
+      background: #111;
+      color: #fff;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: #111;
-      color: #0f0;
-      font-family: monospace;
+      overflow: hidden;
+      perspective: 800px; /* gives depth to 3‑D rotations */
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      text-rendering: geometricPrecision;
     }
 
-    #values {
-      font-size: 1.6rem;
+    #flatText {
+      font-size: clamp(2rem, 8vw, 6rem);
+      font-weight: 700;
       text-align: center;
-      line-height: 1.4;
+      transform-style: preserve-3d;
+      transform: rotateX(0deg) rotateY(0deg);
+      transition: transform 0.05s linear;
+      pointer-events: none;
     }
 
     #status {
-      margin-top: 1rem;
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
       font-size: 0.8rem;
-      color: #888;
+      opacity: 0.75;
+      user-select: none;
       text-align: center;
+      line-height: 1.3;
     }
   </style>
 </head>
 <body>
-  <div id="values">
-    α: -- °/s<br />β: -- °/s<br />γ: -- °/s
-  </div>
-  <div id="status">Initializing…</div>
+  <span id="flatText">Always&nbsp;Flat</span>
+  <div id="status">⌛ Initialising…</div>
 
   <script>
     (function () {
-      const valuesEl = document.getElementById("values");
+      const textEl = document.getElementById("flatText");
       const statusEl = document.getElementById("status");
 
       /**
-       * Update UI with current gyroscope (rotationRate) values.
-       * @param {DeviceMotionEvent} e
+       * Clamp and apply the inverse rotation so the text plane appears upright.
+       * @param {number} beta  X‑axis tilt (front/back) in degrees.
+       * @param {number} gamma Y‑axis tilt (left/right) in degrees.
        */
-      function onMotion(e) {
-        const r = e.rotationRate;
-        if (!r) {
-          statusEl.textContent = "rotationRate unavailable.";
+      function applyRotation(beta, gamma) {
+        beta = Math.max(Math.min(beta, 60), -60);
+        gamma = Math.max(Math.min(gamma, 60), -60);
+        textEl.style.transform = `rotateX(${-beta}deg) rotateY(${gamma}deg)`;
+        statusEl.textContent = `β ${beta.toFixed(0)}°, γ ${gamma.toFixed(0)}°`;
+      }
+
+      /** Handler for DeviceOrientationEvent */
+      function onOrientation(event) {
+        if (event.beta == null || event.gamma == null) {
+          statusEl.textContent = "Orientation values unavailable. (β/γ null)";
           return;
         }
-        const a = r.alpha != null ? r.alpha.toFixed(1) : "--";
-        const b = r.beta != null ? r.beta.toFixed(1) : "--";
-        const g = r.gamma != null ? r.gamma.toFixed(1) : "--";
-        valuesEl.innerHTML = `α: ${a} °/s<br>β: ${b} °/s<br>γ: ${g} °/s`;
+        applyRotation(event.beta, event.gamma);
       }
 
-      /** Begin listening for devicemotion events */
-      function initMotion() {
-        window.addEventListener("devicemotion", onMotion, true);
-        statusEl.textContent = "Listening for devicemotion…";
+      /** Start listening to deviceorientation */
+      function initOrientation() {
+        window.addEventListener("deviceorientation", onOrientation, true);
+        statusEl.textContent = "Listening to deviceorientation…";
       }
 
-      /** Ask for iOS permission if required */
-      function requestMotionPermission(callback) {
+      /**
+       * Request iOS sensor permission if required. Returns true if a request
+       * was made (so we must wait for user action), false otherwise.
+       */
+      function requestOrientationPermission(callback) {
         if (
-          typeof DeviceMotionEvent !== "undefined" &&
-          typeof DeviceMotionEvent.requestPermission === "function"
+          typeof DeviceOrientationEvent !== "undefined" &&
+          typeof DeviceOrientationEvent.requestPermission === "function"
         ) {
-          DeviceMotionEvent.requestPermission()
+          DeviceOrientationEvent.requestPermission()
             .then((state) => {
               if (state === "granted") {
                 callback();
@@ -79,28 +97,32 @@
               }
             })
             .catch(() => (statusEl.textContent = "Motion permission error."));
-          return true; // a request was made
+          return true;
         }
-        return false; // no request needed
+        return false;
       }
 
-      /** Set up motion listeners with proper permission flow */
+      /** Main setup logic */
       function setup() {
-        if ("DeviceMotionEvent" in window) {
-          if (!requestMotionPermission(initMotion)) {
-            initMotion();
+        if ("DeviceOrientationEvent" in window) {
+          // On iOS 13+ a user gesture is required before we may request permission.
+          if (!requestOrientationPermission(initOrientation)) {
+            // Either permission API not needed or not supported—just start.
+            initOrientation();
           }
         } else {
-          statusEl.textContent = "DeviceMotionEvent not supported.";
+          statusEl.textContent = "DeviceOrientationEvent not supported on this device/browser.";
         }
       }
 
-      // iOS requires the call inside a user gesture
+      // If we detect an iOS device, wait for a touch gesture before setup so
+      // we can request permission inside a user‑initiated event.
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       if (isIOS) {
-        statusEl.textContent = "Tap anywhere to enable motion sensors ✋";
+        statusEl.innerHTML = "Tap anywhere to enable motion sensors ✋";
         window.addEventListener("click", setup, { once: true });
       } else {
+        // Non‑iOS: start immediately (permission prompt will auto‑appear on Android if needed).
         setup();
       }
     })();
