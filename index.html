@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Always‑Flat Text Demo</title>
   <style>
+    /* ----- Layout & typography ----- */
     html, body {
       height: 100%;
       margin: 0;
@@ -14,8 +15,9 @@
       align-items: center;
       justify-content: center;
       overflow: hidden;
-      /* Perspective gives the scene depth so counter‑rotations look natural */
-      perspective: 800px;
+      perspective: 800px; /* gives depth to 3‑D rotations */
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      text-rendering: geometricPrecision;
     }
 
     #flatText {
@@ -34,57 +36,94 @@
       left: 50%;
       transform: translateX(-50%);
       font-size: 0.8rem;
-      opacity: 0.7;
+      opacity: 0.75;
       user-select: none;
+      text-align: center;
+      line-height: 1.3;
     }
   </style>
 </head>
 <body>
-  <span id="flatText">Always Flat</span>
-  <div id="status">Waiting for sensor…</div>
+  <span id="flatText">Always&nbsp;Flat</span>
+  <div id="status">⌛ Initialising…</div>
 
   <script>
     (function () {
       const textEl = document.getElementById("flatText");
       const statusEl = document.getElementById("status");
 
-      function onOrientation(event) {
-        let beta = event.beta || 0;   // X‑axis tilt (front‑back) ∈ [‑180,180]
-        let gamma = event.gamma || 0; // Y‑axis tilt (left‑right) ∈ [‑90,90]
-
-        // Limit extremes so the text never gets overly stretched
+      /**
+       * Clamp and apply the inverse rotation so the text plane appears upright.
+       * @param {number} beta  X‑axis tilt (front/back) in degrees.
+       * @param {number} gamma Y‑axis tilt (left/right) in degrees.
+       */
+      function applyRotation(beta, gamma) {
         beta = Math.max(Math.min(beta, 60), -60);
         gamma = Math.max(Math.min(gamma, 60), -60);
-
-        // Apply the inverse rotation so the plane appears upright
-        textEl.style.transform = `rotateX(${ -beta }deg) rotateY(${ gamma }deg)`;
+        textEl.style.transform = `rotateX(${-beta}deg) rotateY(${gamma}deg)`;
         statusEl.textContent = `β ${beta.toFixed(0)}°, γ ${gamma.toFixed(0)}°`;
       }
 
-      function init() {
-        window.addEventListener("deviceorientation", onOrientation, true);
+      /** Handler for DeviceOrientationEvent */
+      function onOrientation(event) {
+        if (event.beta == null || event.gamma == null) {
+          statusEl.textContent = "Orientation values unavailable. (β/γ null)";
+          return;
+        }
+        applyRotation(event.beta, event.gamma);
       }
 
-      // iOS 13+ requires a user gesture before accessing motion sensors
-      if (
-        typeof DeviceOrientationEvent !== "undefined" &&
-        typeof DeviceOrientationEvent.requestPermission === "function"
-      ) {
-        statusEl.innerHTML =
-          "Tap to enable motion sensors ✋";
-        window.addEventListener("click", () => {
-          DeviceOrientationEvent.requestPermission().then((state) => {
-            if (state === "granted") {
-              init();
-            } else {
-              statusEl.textContent = "Permission denied.";
-            }
-          });
-        }, { once: true });
-      } else if ("DeviceOrientationEvent" in window) {
-        init();
+      /** Start listening to deviceorientation */
+      function initOrientation() {
+        window.addEventListener("deviceorientation", onOrientation, true);
+        statusEl.textContent = "Listening to deviceorientation…";
+      }
+
+      /**
+       * Request iOS sensor permission if required. Returns true if a request
+       * was made (so we must wait for user action), false otherwise.
+       */
+      function requestOrientationPermission(callback) {
+        if (
+          typeof DeviceOrientationEvent !== "undefined" &&
+          typeof DeviceOrientationEvent.requestPermission === "function"
+        ) {
+          DeviceOrientationEvent.requestPermission()
+            .then((state) => {
+              if (state === "granted") {
+                callback();
+              } else {
+                statusEl.textContent = "Motion permission denied.";
+              }
+            })
+            .catch(() => (statusEl.textContent = "Motion permission error."));
+          return true;
+        }
+        return false;
+      }
+
+      /** Main setup logic */
+      function setup() {
+        if ("DeviceOrientationEvent" in window) {
+          // On iOS 13+ a user gesture is required before we may request permission.
+          if (!requestOrientationPermission(initOrientation)) {
+            // Either permission API not needed or not supported—just start.
+            initOrientation();
+          }
+        } else {
+          statusEl.textContent = "DeviceOrientationEvent not supported on this device/browser.";
+        }
+      }
+
+      // If we detect an iOS device, wait for a touch gesture before setup so
+      // we can request permission inside a user‑initiated event.
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+      if (isIOS) {
+        statusEl.innerHTML = "Tap anywhere to enable motion sensors ✋";
+        window.addEventListener("click", setup, { once: true });
       } else {
-        statusEl.textContent = "DeviceOrientationEvent not supported.";
+        // Non‑iOS: start immediately (permission prompt will auto‑appear on Android if needed).
+        setup();
       }
     })();
   </script>
