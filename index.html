@@ -1,182 +1,248 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Gyroscope AR Text Demo</title>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gyroscope Text Illusion</title>
     <style>
-      /* ====== Layout ====== */
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-        display: flex;
-        flex-direction: column;
-        background: #111;
-        color: #fff;
-        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-        perspective: 1000px; /* stronger depth for AR feeling */
-        -webkit-font-smoothing: antialiased;
-        text-rendering: geometricPrecision;
-      }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-      /* ====== Scene ====== */
-      #content {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        pointer-events: none;
-      }
+        body {
+            font-family: 'Arial Black', sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 1000px;
+        }
 
-      #tiltingText {
-        font-size: clamp(2.2rem, 9vw, 6rem);
-        font-weight: 700;
-        transform-style: preserve-3d;
-        transform-origin: bottom center; /* pivot from phone edge */
-        transform: rotateX(0deg) rotateY(0deg) translateZ(0px);
-        transition: transform 0.05s linear;
-        /* subtle glow for depth */
-        text-shadow: 0 2px 8px rgba(0, 255, 255, 0.4);
-      }
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-      #staticText {
-        font-size: clamp(1rem, 4vw, 2rem);
-        color: #888;
-        margin-top: 0.5rem;
-      }
+        .text-wrapper {
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.1s ease-out;
+        }
 
-      /* ====== Stats ====== */
-      #stats {
-        position: fixed;
-        bottom: 1rem;
-        left: 50%;
-        transform: translateX(-50%);
-        text-align: center;
-        font-family: monospace;
-        line-height: 1.4;
-      }
+        .standing-text {
+            font-size: 5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            background: linear-gradient(180deg, #fff 0%, #888 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            transform-style: preserve-3d;
+        }
 
-      #values {
-        color: #0f0;
-        font-size: 1.2rem;
-      }
+        .shadow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            font-size: 5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: rgba(0,0,0,0.3);
+            filter: blur(10px);
+            transform: translateY(50px) rotateX(90deg) scaleY(0.5);
+            transform-origin: bottom center;
+        }
 
-      #status {
-        margin-top: 0.25rem;
-        font-size: 0.75rem;
-        color: #888;
-      }
+        .permission-btn {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px 40px;
+            font-size: 1.2rem;
+            background: #4a9eff;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(74, 158, 255, 0.3);
+        }
+
+        .permission-btn:hover {
+            background: #357abd;
+            transform: translate(-50%, -50%) scale(1.05);
+            box-shadow: 0 15px 40px rgba(74, 158, 255, 0.4);
+        }
+
+        .info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 0.9rem;
+            color: #666;
+            font-family: 'Arial', sans-serif;
+        }
+
+        .debug {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 0.8rem;
+            color: #444;
+            font-family: monospace;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .standing-text, .shadow {
+                font-size: 3rem;
+            }
+        }
     </style>
-  </head>
-  <body>
-    <div id="content">
-      <span id="tiltingText">Always Flat</span>
-      <span id="staticText">Reference (static)</span>
-    </div>
-
-    <div id="stats">
-      <div id="values">α: -- °/s<br />β: -- °/s<br />γ: -- °/s</div>
-      <div id="status">Initializing…</div>
+</head>
+<body>
+    <div class="container">
+        <div class="info">Tilt your device to see the effect</div>
+        <button class="permission-btn" id="startBtn">Enable Gyroscope</button>
+        
+        <div class="text-wrapper" id="textWrapper" style="display: none;">
+            <div class="shadow">STANDING</div>
+            <div class="standing-text">STANDING</div>
+        </div>
+        
+        <div class="debug" id="debug"></div>
     </div>
 
     <script>
-      (function () {
-        const tiltingEl = document.getElementById("tiltingText");
-        const valuesEl = document.getElementById("values");
-        const statusEl = document.getElementById("status");
-
-        /*
-         * =============================================
-         *  Orientation → make text behave like a sign
-         *  standing on the bottom edge of the screen.
-         *
-         *  β (front/back tilt):
-         *    ▸  0°  : phone flat  → text flat (fully visible from above)
-         *    ▸ 90°  : phone vertical → text vertical edge-on (invisible)
-         *    ▸ >90° : phone leaning toward viewer → text leans toward viewer
-         *
-         *  We therefore rotateX by -β.
-         * =============================================
-         */
-        function onOrientation(e) {
-          let beta = e.beta ?? 0;   // front/back tilt (‑180 → 180)
-          let gamma = e.gamma ?? 0;  // left/right tilt (‑90 → 90)
-
-          /*
-           * We want the front face visible whenever the phone leans toward
-           * the user (β ≤ 0) and gradually disappear only as the device
-           * approaches vertical (β → 90°). If the phone continues past
-           * vertical (β > 90°) or tips the opposite way (β < 0°), keep the
-           * text fully visible (flat).
-           */
-
-          // Clamp β to [0, 90] so beyond this range the face stays flat
-          const clampedBeta = Math.min(Math.max(beta, 0), 90);
-
-          // Map: 0  → 0   (flat)
-          //      90 → −90 (edge‑on)
-          const rotX = -clampedBeta;
-
-          // Natural sideways lean, scaled down
-          const rotY = -gamma * 0.6;
-
-          // Slight Z lift for depth
-          const zLift = 20;
-
-          tiltingEl.style.transform = `translateZ(${zLift}px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+        const textWrapper = document.getElementById('textWrapper');
+        const startBtn = document.getElementById('startBtn');
+        const debug = document.getElementById('debug');
+        
+        let beta = 0;  // X-axis rotation
+        let gamma = 0; // Y-axis rotation
+        let alpha = 0; // Z-axis rotation
+        
+        function updateTextOrientation() {
+            // Calculate the rotation needed to make text appear vertical
+            // Beta: front-to-back tilt (x-axis)
+            // Gamma: left-to-right tilt (y-axis)
+            
+            // Clamp values to prevent extreme rotations
+            const clampedBeta = Math.max(-90, Math.min(90, beta));
+            const clampedGamma = Math.max(-90, Math.min(90, gamma));
+            
+            // Calculate perspective correction
+            // When device tilts forward/back, we rotate around X
+            // When device tilts left/right, we rotate around Y
+            const xRotation = -clampedBeta + 90; // Compensate for device tilt
+            const yRotation = clampedGamma;
+            const zRotation = 0;
+            
+            // Apply perspective skew based on tilt
+            const skewX = clampedGamma * 0.3;
+            const skewY = clampedBeta * 0.3;
+            
+            // Calculate scale to maintain apparent size
+            const scale = 1 + Math.abs(clampedBeta) * 0.003 + Math.abs(clampedGamma) * 0.003;
+            
+            // Apply transformations
+            textWrapper.style.transform = `
+                rotateX(${xRotation}deg) 
+                rotateY(${yRotation}deg) 
+                rotateZ(${zRotation}deg)
+                skewX(${skewX}deg)
+                skewY(${skewY}deg)
+                scale(${scale})
+            `;
+            
+            // Update debug info
+            debug.innerHTML = `
+                Beta (X): ${beta.toFixed(1)}° <br>
+                Gamma (Y): ${gamma.toFixed(1)}° <br>
+                Alpha (Z): ${alpha.toFixed(1)}°
+            `;
         }
-
-        /* ====== Gyro stats ====== */
-        function onMotion(e) {
-          const r = e.rotationRate || {};
-          const a = r.alpha != null ? r.alpha.toFixed(1) : "--";
-          const b = r.beta != null ? r.beta.toFixed(1) : "--";
-          const g = r.gamma != null ? r.gamma.toFixed(1) : "--";
-          valuesEl.innerHTML = `α: ${a} °/s<br>β: ${b} °/s<br>γ: ${g} °/s`;
+        
+        function handleOrientation(event) {
+            beta = event.beta;   // X-axis (-180 to 180)
+            gamma = event.gamma; // Y-axis (-90 to 90)
+            alpha = event.alpha; // Z-axis (0 to 360)
+            
+            updateTextOrientation();
         }
-
-        /* ====== Permissions & setup ====== */
-        function initSensors() {
-          window.addEventListener("deviceorientation", onOrientation, true);
-          window.addEventListener("devicemotion", onMotion, true);
-          statusEl.textContent = "Listening to sensors…";
+        
+        function startGyroscope() {
+            // Check if device orientation is supported
+            if (window.DeviceOrientationEvent) {
+                // Request permission for iOS 13+
+                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                    DeviceOrientationEvent.requestPermission()
+                        .then(response => {
+                            if (response === 'granted') {
+                                window.addEventListener('deviceorientation', handleOrientation);
+                                startBtn.style.display = 'none';
+                                textWrapper.style.display = 'block';
+                                // debug.style.display = 'block'; // Uncomment to see debug info
+                            } else {
+                                alert('Permission denied for device orientation.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error requesting permission:', error);
+                            alert('Error requesting gyroscope permission.');
+                        });
+                } else {
+                    // Non-iOS devices
+                    window.addEventListener('deviceorientation', handleOrientation);
+                    startBtn.style.display = 'none';
+                    textWrapper.style.display = 'block';
+                    // debug.style.display = 'block'; // Uncomment to see debug info
+                }
+            } else {
+                alert('Device orientation is not supported on this device.');
+            }
         }
-
-        function requestMotionPermissionIfNeeded(cb) {
-          if (
-            typeof DeviceMotionEvent !== "undefined" &&
-            typeof DeviceMotionEvent.requestPermission === "function"
-          ) {
-            DeviceMotionEvent.requestPermission()
-              .then((state) => {
-                if (state === "granted") cb();
-                else statusEl.textContent = "Motion permission denied.";
-              })
-              .catch(() => (statusEl.textContent = "Motion permission error."));
-          } else {
-            cb();
-          }
-        }
-
-        function setup() {
-          if (!("DeviceMotionEvent" in window)) {
-            statusEl.textContent = "DeviceMotionEvent not supported.";
-            return;
-          }
-          requestMotionPermissionIfNeeded(initSensors);
-        }
-
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-        if (isIOS) {
-          statusEl.textContent = "Tap to enable motion sensors ✋";
-          window.addEventListener("click", setup, { once: true });
-        } else {
-          setup();
-        }
-      })();
+        
+        startBtn.addEventListener('click', startGyroscope);
+        
+        // For desktop testing with mouse (optional)
+        let mouseEnabled = false;
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'm' || e.key === 'M') {
+                mouseEnabled = !mouseEnabled;
+                if (mouseEnabled && textWrapper.style.display === 'none') {
+                    startBtn.style.display = 'none';
+                    textWrapper.style.display = 'block';
+                }
+            }
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (mouseEnabled) {
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                
+                gamma = ((e.clientX - centerX) / centerX) * 45;
+                beta = ((e.clientY - centerY) / centerY) * 45;
+                
+                updateTextOrientation();
+            }
+        });
     </script>
-  </body>
+</body>
 </html>
