@@ -13,14 +13,13 @@
 
         body {
             font-family: 'Arial Black', sans-serif;
-            background: #000;
+            background: #1a1a1a;
             color: #fff;
             overflow: hidden;
             height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            perspective: 1000px;
         }
 
         .container {
@@ -36,35 +35,38 @@
             position: relative;
             transform-style: preserve-3d;
             transition: transform 0.1s ease-out;
+            z-index: 10;
         }
 
         .standing-text {
-            font-size: 5rem;
+            font-size: 4rem;
             font-weight: 900;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            background: linear-gradient(180deg, #fff 0%, #888 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            color: #fff;
+            text-shadow: 
+                0 0 10px rgba(255,255,255,0.5),
+                0 0 20px rgba(255,255,255,0.3),
+                0 10px 30px rgba(0,0,0,0.8);
             transform-style: preserve-3d;
+            display: block;
+            text-align: center;
         }
 
         .shadow {
             position: absolute;
-            top: 0;
+            top: 100%;
             left: 0;
             width: 100%;
-            height: 100%;
-            font-size: 5rem;
+            font-size: 4rem;
             font-weight: 900;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            color: rgba(0,0,0,0.3);
-            filter: blur(10px);
-            transform: translateY(50px) rotateX(90deg) scaleY(0.5);
-            transform-origin: bottom center;
+            color: rgba(0,0,0,0.5);
+            filter: blur(15px);
+            transform: rotateX(90deg) scaleY(0.3) translateZ(-50px);
+            transform-origin: top center;
+            text-align: center;
         }
 
         .permission-btn {
@@ -81,6 +83,7 @@
             cursor: pointer;
             transition: all 0.3s ease;
             box-shadow: 0 10px 30px rgba(74, 158, 255, 0.3);
+            z-index: 100;
         }
 
         .permission-btn:hover {
@@ -89,107 +92,198 @@
             box-shadow: 0 15px 40px rgba(74, 158, 255, 0.4);
         }
 
-        .info {
+        .stats {
             position: absolute;
             top: 20px;
             left: 20px;
             font-size: 0.9rem;
-            color: #666;
-            font-family: 'Arial', sans-serif;
+            color: #4a9eff;
+            font-family: 'Courier New', monospace;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #4a9eff;
+            z-index: 100;
+            min-width: 250px;
         }
 
-        .debug {
+        .stats h3 {
+            margin-bottom: 10px;
+            color: #fff;
+            font-size: 1.1rem;
+        }
+
+        .stat-line {
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-value {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .error-msg {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
-            font-size: 0.8rem;
-            color: #444;
-            font-family: monospace;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255,0,0,0.2);
+            border: 2px solid #ff0000;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
             display: none;
+            z-index: 100;
+        }
+
+        .grid {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            opacity: 0.3;
+            z-index: 1;
         }
 
         @media (max-width: 768px) {
             .standing-text, .shadow {
                 font-size: 3rem;
             }
+            .stats {
+                font-size: 0.8rem;
+                min-width: 200px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="info">Tilt your device to see the effect</div>
+        <div class="grid"></div>
+        
+        <div class="stats" id="stats">
+            <h3>Gyroscope Stats</h3>
+            <div class="stat-line">
+                <span>Status:</span>
+                <span class="stat-value" id="status">Not Started</span>
+            </div>
+            <div class="stat-line">
+                <span>Beta (X):</span>
+                <span class="stat-value" id="betaVal">0°</span>
+            </div>
+            <div class="stat-line">
+                <span>Gamma (Y):</span>
+                <span class="stat-value" id="gammaVal">0°</span>
+            </div>
+            <div class="stat-line">
+                <span>Alpha (Z):</span>
+                <span class="stat-value" id="alphaVal">0°</span>
+            </div>
+            <div class="stat-line">
+                <span>Transform:</span>
+                <span class="stat-value" id="transformVal">None</span>
+            </div>
+        </div>
+        
         <button class="permission-btn" id="startBtn">Enable Gyroscope</button>
         
         <div class="text-wrapper" id="textWrapper" style="display: none;">
-            <div class="shadow">STANDING</div>
             <div class="standing-text">STANDING</div>
+            <div class="shadow">STANDING</div>
         </div>
         
-        <div class="debug" id="debug"></div>
+        <div class="error-msg" id="errorMsg">
+            <h3>Error</h3>
+            <p id="errorText"></p>
+        </div>
     </div>
 
     <script>
         const textWrapper = document.getElementById('textWrapper');
         const startBtn = document.getElementById('startBtn');
-        const debug = document.getElementById('debug');
+        const stats = document.getElementById('stats');
+        const statusEl = document.getElementById('status');
+        const betaEl = document.getElementById('betaVal');
+        const gammaEl = document.getElementById('gammaVal');
+        const alphaEl = document.getElementById('alphaVal');
+        const transformEl = document.getElementById('transformVal');
+        const errorMsg = document.getElementById('errorMsg');
+        const errorText = document.getElementById('errorText');
         
-        let beta = 0;  // X-axis rotation
-        let gamma = 0; // Y-axis rotation
-        let alpha = 0; // Z-axis rotation
+        let beta = 0;
+        let gamma = 0;
+        let alpha = 0;
+        let isTracking = false;
+        
+        function showError(message) {
+            errorText.textContent = message;
+            errorMsg.style.display = 'block';
+            setTimeout(() => {
+                errorMsg.style.display = 'none';
+            }, 5000);
+        }
+        
+        function updateStats() {
+            betaEl.textContent = `${beta.toFixed(1)}°`;
+            gammaEl.textContent = `${gamma.toFixed(1)}°`;
+            alphaEl.textContent = `${alpha.toFixed(1)}°`;
+            
+            if (isTracking) {
+                statusEl.textContent = 'Active';
+                statusEl.style.color = '#4aff4a';
+            }
+        }
         
         function updateTextOrientation() {
-            // Calculate the rotation needed to make text appear vertical
-            // Beta: front-to-back tilt (x-axis)
-            // Gamma: left-to-right tilt (y-axis)
-            
-            // Clamp values to prevent extreme rotations
+            // Clamp values
             const clampedBeta = Math.max(-90, Math.min(90, beta));
             const clampedGamma = Math.max(-90, Math.min(90, gamma));
             
-            // Calculate perspective correction
-            // When device tilts forward/back, we rotate around X
-            // When device tilts left/right, we rotate around Y
-            const xRotation = -clampedBeta + 90; // Compensate for device tilt
+            // Calculate rotations - simpler approach
+            const xRotation = -clampedBeta; // Tilt compensation
             const yRotation = clampedGamma;
             const zRotation = 0;
             
-            // Apply perspective skew based on tilt
-            const skewX = clampedGamma * 0.3;
-            const skewY = clampedBeta * 0.3;
-            
-            // Calculate scale to maintain apparent size
-            const scale = 1 + Math.abs(clampedBeta) * 0.003 + Math.abs(clampedGamma) * 0.003;
-            
-            // Apply transformations
-            textWrapper.style.transform = `
+            // Build transform
+            const transform = `
+                perspective(1000px)
                 rotateX(${xRotation}deg) 
                 rotateY(${yRotation}deg) 
                 rotateZ(${zRotation}deg)
-                skewX(${skewX}deg)
-                skewY(${skewY}deg)
-                scale(${scale})
             `;
             
-            // Update debug info
-            debug.innerHTML = `
-                Beta (X): ${beta.toFixed(1)}° <br>
-                Gamma (Y): ${gamma.toFixed(1)}° <br>
-                Alpha (Z): ${alpha.toFixed(1)}°
-            `;
+            textWrapper.style.transform = transform;
+            
+            // Update transform display
+            transformEl.textContent = `X:${xRotation.toFixed(0)}° Y:${yRotation.toFixed(0)}°`;
+            transformEl.style.fontSize = '0.7rem';
+            
+            updateStats();
         }
         
         function handleOrientation(event) {
-            beta = event.beta;   // X-axis (-180 to 180)
-            gamma = event.gamma; // Y-axis (-90 to 90)
-            alpha = event.alpha; // Z-axis (0 to 360)
-            
-            updateTextOrientation();
+            if (event.beta !== null && event.gamma !== null) {
+                beta = event.beta;
+                gamma = event.gamma;
+                alpha = event.alpha || 0;
+                isTracking = true;
+                
+                updateTextOrientation();
+            } else {
+                showError('Null orientation values received');
+            }
         }
         
         function startGyroscope() {
-            // Check if device orientation is supported
+            statusEl.textContent = 'Requesting...';
+            statusEl.style.color = '#ffff4a';
+            
             if (window.DeviceOrientationEvent) {
-                // Request permission for iOS 13+
+                // iOS 13+ requires permission
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                     DeviceOrientationEvent.requestPermission()
                         .then(response => {
@@ -197,37 +291,51 @@
                                 window.addEventListener('deviceorientation', handleOrientation);
                                 startBtn.style.display = 'none';
                                 textWrapper.style.display = 'block';
-                                // debug.style.display = 'block'; // Uncomment to see debug info
+                                statusEl.textContent = 'Permission Granted';
+                                statusEl.style.color = '#4aff4a';
                             } else {
-                                alert('Permission denied for device orientation.');
+                                showError('Permission denied for device orientation.');
+                                statusEl.textContent = 'Permission Denied';
+                                statusEl.style.color = '#ff4a4a';
                             }
                         })
                         .catch(error => {
-                            console.error('Error requesting permission:', error);
-                            alert('Error requesting gyroscope permission.');
+                            showError(`Permission error: ${error.message}`);
+                            statusEl.textContent = 'Error';
+                            statusEl.style.color = '#ff4a4a';
                         });
                 } else {
                     // Non-iOS devices
                     window.addEventListener('deviceorientation', handleOrientation);
                     startBtn.style.display = 'none';
                     textWrapper.style.display = 'block';
-                    // debug.style.display = 'block'; // Uncomment to see debug info
+                    statusEl.textContent = 'Started';
+                    statusEl.style.color = '#4aff4a';
                 }
             } else {
-                alert('Device orientation is not supported on this device.');
+                showError('DeviceOrientation not supported');
+                statusEl.textContent = 'Not Supported';
+                statusEl.style.color = '#ff4a4a';
             }
         }
         
         startBtn.addEventListener('click', startGyroscope);
         
-        // For desktop testing with mouse (optional)
+        // Mouse control for testing
         let mouseEnabled = false;
         document.addEventListener('keydown', (e) => {
             if (e.key === 'm' || e.key === 'M') {
                 mouseEnabled = !mouseEnabled;
-                if (mouseEnabled && textWrapper.style.display === 'none') {
-                    startBtn.style.display = 'none';
-                    textWrapper.style.display = 'block';
+                if (mouseEnabled) {
+                    if (textWrapper.style.display === 'none') {
+                        startBtn.style.display = 'none';
+                        textWrapper.style.display = 'block';
+                    }
+                    statusEl.textContent = 'Mouse Mode';
+                    statusEl.style.color = '#ff4aff';
+                    isTracking = true;
+                } else {
+                    statusEl.textContent = 'Mouse Mode Off';
                 }
             }
         });
@@ -239,8 +347,21 @@
                 
                 gamma = ((e.clientX - centerX) / centerX) * 45;
                 beta = ((e.clientY - centerY) / centerY) * 45;
+                alpha = 0;
                 
                 updateTextOrientation();
+            }
+        });
+        
+        // Test button for debugging
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 't' || e.key === 'T') {
+                if (textWrapper.style.display === 'none') {
+                    startBtn.style.display = 'none';
+                    textWrapper.style.display = 'block';
+                    statusEl.textContent = 'Test Mode';
+                    statusEl.style.color = '#ffff4a';
+                }
             }
         });
     </script>
