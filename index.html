@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Always‑Flat Text Demo</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #111;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      /* Perspective gives the scene depth so counter‑rotations look natural */
+      perspective: 800px;
+    }
+
+    #flatText {
+      font-size: clamp(2rem, 8vw, 6rem);
+      font-weight: 700;
+      text-align: center;
+      transform-style: preserve-3d;
+      transform: rotateX(0deg) rotateY(0deg);
+      transition: transform 0.05s linear;
+      pointer-events: none;
+    }
+
+    #status {
+      position: fixed;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.8rem;
+      opacity: 0.7;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <span id="flatText">Always Flat</span>
+  <div id="status">Waiting for sensor…</div>
+
+  <script>
+    (function () {
+      const textEl = document.getElementById("flatText");
+      const statusEl = document.getElementById("status");
+
+      function onOrientation(event) {
+        let beta = event.beta || 0;   // X‑axis tilt (front‑back) ∈ [‑180,180]
+        let gamma = event.gamma || 0; // Y‑axis tilt (left‑right) ∈ [‑90,90]
+
+        // Limit extremes so the text never gets overly stretched
+        beta = Math.max(Math.min(beta, 60), -60);
+        gamma = Math.max(Math.min(gamma, 60), -60);
+
+        // Apply the inverse rotation so the plane appears upright
+        textEl.style.transform = `rotateX(${ -beta }deg) rotateY(${ gamma }deg)`;
+        statusEl.textContent = `β ${beta.toFixed(0)}°, γ ${gamma.toFixed(0)}°`;
+      }
+
+      function init() {
+        window.addEventListener("deviceorientation", onOrientation, true);
+      }
+
+      // iOS 13+ requires a user gesture before accessing motion sensors
+      if (
+        typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function"
+      ) {
+        statusEl.innerHTML =
+          "Tap to enable motion sensors ✋";
+        window.addEventListener("click", () => {
+          DeviceOrientationEvent.requestPermission().then((state) => {
+            if (state === "granted") {
+              init();
+            } else {
+              statusEl.textContent = "Permission denied.";
+            }
+          });
+        }, { once: true });
+      } else if ("DeviceOrientationEvent" in window) {
+        init();
+      } else {
+        statusEl.textContent = "DeviceOrientationEvent not supported.";
+      }
+    })();
+  </script>
+</body>
+</html>
