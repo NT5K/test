@@ -3,126 +3,147 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Always‑Flat Text Demo</title>
+  <title>Gyroscope Demo with Upright Text</title>
   <style>
-    /* ----- Layout & typography ----- */
+    /* ---------- Global layout ---------- */
     html, body {
       height: 100%;
       margin: 0;
+      display: flex;
+      flex-direction: column;
       background: #111;
       color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-      perspective: 800px; /* gives depth to 3‑D rotations */
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      perspective: 800px; /* depth for 3‑D rotations */
+      -webkit-font-smoothing: antialiased;
       text-rendering: geometricPrecision;
     }
 
-    #flatText {
-      font-size: clamp(2rem, 8vw, 6rem);
-      font-weight: 700;
+    /* ---------- Text zone (center) ---------- */
+    #content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       text-align: center;
-      transform-style: preserve-3d;
-      transform: rotateX(0deg) rotateY(0deg);
-      transition: transform 0.05s linear;
       pointer-events: none;
     }
 
-    #status {
+    #tiltingText {
+      font-size: clamp(2.2rem, 9vw, 6rem);
+      font-weight: 700;
+      transform-style: preserve-3d;
+      transform: rotateX(0deg) rotateY(0deg);
+      transition: transform 0.05s linear;
+    }
+
+    #staticText {
+      font-size: clamp(1rem, 4vw, 2rem);
+      color: #888;
+      margin-top: 0.5rem;
+    }
+
+    /* ---------- Stats (bottom) ---------- */
+    #stats {
       position: fixed;
       bottom: 1rem;
       left: 50%;
       transform: translateX(-50%);
-      font-size: 0.8rem;
-      opacity: 0.75;
-      user-select: none;
       text-align: center;
-      line-height: 1.3;
+      font-family: monospace;
+      line-height: 1.4;
+    }
+
+    #values {
+      color: #0f0;
+      font-size: 1.2rem;
+    }
+
+    #status {
+      margin-top: 0.25rem;
+      font-size: 0.75rem;
+      color: #888;
     }
   </style>
 </head>
 <body>
-  <span id="flatText">Always&nbsp;Flat</span>
-  <div id="status">⌛ Initialising…</div>
+  <div id="content">
+    <span id="tiltingText">Always&nbsp;Flat</span>
+    <span id="staticText">This text never tilts</span>
+  </div>
+
+  <div id="stats">
+    <div id="values">α: -- °/s<br>β: -- °/s<br>γ: -- °/s</div>
+    <div id="status">Initializing…</div>
+  </div>
 
   <script>
     (function () {
-      const textEl = document.getElementById("flatText");
-      const statusEl = document.getElementById("status");
+      const tiltingEl = document.getElementById("tiltingText");
+      const valuesEl  = document.getElementById("values");
+      const statusEl  = document.getElementById("status");
 
-      /**
-       * Clamp and apply the inverse rotation so the text plane appears upright.
-       * @param {number} beta  X‑axis tilt (front/back) in degrees.
-       * @param {number} gamma Y‑axis tilt (left/right) in degrees.
-       */
-      function applyRotation(beta, gamma) {
-        beta = Math.max(Math.min(beta, 60), -60);
+      /* ---------------- Orientation → keep tilting text upright ---------------- */
+      function onOrientation(e) {
+        let beta  = e.beta  || 0; // X‑axis front/back (‑180 → 180)
+        let gamma = e.gamma || 0; // Y‑axis left/right (‑90 → 90)
+
+        // Clamp extremes to avoid brutal stretches
+        beta  = Math.max(Math.min(beta, 60), -60);
         gamma = Math.max(Math.min(gamma, 60), -60);
-        textEl.style.transform = `rotateX(${-beta}deg) rotateY(${gamma}deg)`;
-        statusEl.textContent = `β ${beta.toFixed(0)}°, γ ${gamma.toFixed(0)}°`;
+
+        // Apply inverse so the plane faces the viewer
+        tiltingEl.style.transform = `rotateX(${-beta}deg) rotateY(${gamma}deg)`;
       }
 
-      /** Handler for DeviceOrientationEvent */
-      function onOrientation(event) {
-        if (event.beta == null || event.gamma == null) {
-          statusEl.textContent = "Orientation values unavailable. (β/γ null)";
-          return;
-        }
-        applyRotation(event.beta, event.gamma);
+      /* ---------------- Gyroscope stats ---------------- */
+      function onMotion(e) {
+        const r = e.rotationRate || {};
+        const a = r.alpha != null ? r.alpha.toFixed(1) : "--";
+        const b = r.beta  != null ? r.beta .toFixed(1) : "--";
+        const g = r.gamma != null ? r.gamma.toFixed(1) : "--";
+        valuesEl.innerHTML = `α: ${a} °/s<br>β: ${b} °/s<br>γ: ${g} °/s`;
       }
 
-      /** Start listening to deviceorientation */
-      function initOrientation() {
+      /* ---------------- Permissions / setup ---------------- */
+      function initSensors() {
         window.addEventListener("deviceorientation", onOrientation, true);
-        statusEl.textContent = "Listening to deviceorientation…";
+        window.addEventListener("devicemotion", onMotion, true);
+        statusEl.textContent = "Listening to sensors…";
       }
 
-      /**
-       * Request iOS sensor permission if required. Returns true if a request
-       * was made (so we must wait for user action), false otherwise.
-       */
-      function requestOrientationPermission(callback) {
+      function requestMotionPermissionIfNeeded(cb) {
+        // iOS 13+ requires a user gesture, others prompt automatically.
         if (
-          typeof DeviceOrientationEvent !== "undefined" &&
-          typeof DeviceOrientationEvent.requestPermission === "function"
+          typeof DeviceMotionEvent !== "undefined" &&
+          typeof DeviceMotionEvent.requestPermission === "function"
         ) {
-          DeviceOrientationEvent.requestPermission()
+          DeviceMotionEvent.requestPermission()
             .then((state) => {
-              if (state === "granted") {
-                callback();
-              } else {
-                statusEl.textContent = "Motion permission denied.";
-              }
+              if (state === "granted") cb();
+              else statusEl.textContent = "Motion permission denied.";
             })
             .catch(() => (statusEl.textContent = "Motion permission error."));
-          return true;
-        }
-        return false;
-      }
-
-      /** Main setup logic */
-      function setup() {
-        if ("DeviceOrientationEvent" in window) {
-          // On iOS 13+ a user gesture is required before we may request permission.
-          if (!requestOrientationPermission(initOrientation)) {
-            // Either permission API not needed or not supported—just start.
-            initOrientation();
-          }
         } else {
-          statusEl.textContent = "DeviceOrientationEvent not supported on this device/browser.";
+          cb();
         }
       }
 
-      // If we detect an iOS device, wait for a touch gesture before setup so
-      // we can request permission inside a user‑initiated event.
+      function setup() {
+        if (!("DeviceMotionEvent" in window)) {
+          statusEl.textContent = "DeviceMotionEvent not supported.";
+          return;
+        }
+        requestMotionPermissionIfNeeded(initSensors);
+      }
+
+      // On iOS: tie to a user gesture so permission prompt works.
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
       if (isIOS) {
-        statusEl.innerHTML = "Tap anywhere to enable motion sensors ✋";
+        statusEl.textContent = "Tap to enable motion sensors ✋";
         window.addEventListener("click", setup, { once: true });
       } else {
-        // Non‑iOS: start immediately (permission prompt will auto‑appear on Android if needed).
         setup();
       }
     })();
