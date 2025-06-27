@@ -29,6 +29,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            perspective: 1000px;
         }
 
         .text-wrapper {
@@ -92,6 +93,72 @@
             box-shadow: 0 15px 40px rgba(74, 158, 255, 0.4);
         }
 
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #4a9eff;
+            z-index: 100;
+            max-width: 300px;
+        }
+
+        .controls h3 {
+            margin-bottom: 15px;
+            color: #4a9eff;
+            font-size: 1.1rem;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        .control-group input[type="range"] {
+            width: 100%;
+            margin-bottom: 5px;
+        }
+
+        .control-value {
+            text-align: right;
+            font-size: 0.8rem;
+            color: #4a9eff;
+            font-family: monospace;
+        }
+
+        .effect-buttons {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #333;
+        }
+
+        .effect-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background: #333;
+            border: 1px solid #555;
+            color: #fff;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .effect-btn:hover {
+            background: #444;
+            border-color: #4a9eff;
+        }
+
         .stats {
             position: absolute;
             top: 20px;
@@ -124,18 +191,18 @@
             font-weight: bold;
         }
 
-        .error-msg {
+        .help-text {
             position: absolute;
-            top: 50%;
+            bottom: 20px;
             left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255,0,0,0.2);
-            border: 2px solid #ff0000;
-            padding: 20px;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            padding: 15px 25px;
             border-radius: 10px;
+            border: 1px solid #4a9eff;
+            font-size: 0.9rem;
             text-align: center;
-            display: none;
-            z-index: 100;
+            max-width: 600px;
         }
 
         .grid {
@@ -153,6 +220,13 @@
         @media (max-width: 768px) {
             .standing-text, .shadow {
                 font-size: 3rem;
+            }
+            .controls {
+                top: auto;
+                bottom: 100px;
+                right: 10px;
+                left: 10px;
+                max-width: none;
             }
             .stats {
                 font-size: 0.8rem;
@@ -172,20 +246,58 @@
                 <span class="stat-value" id="status">Not Started</span>
             </div>
             <div class="stat-line">
-                <span>Beta (X):</span>
+                <span>Device Beta:</span>
                 <span class="stat-value" id="betaVal">0°</span>
             </div>
             <div class="stat-line">
-                <span>Gamma (Y):</span>
+                <span>Device Gamma:</span>
                 <span class="stat-value" id="gammaVal">0°</span>
             </div>
             <div class="stat-line">
-                <span>Alpha (Z):</span>
+                <span>Device Alpha:</span>
                 <span class="stat-value" id="alphaVal">0°</span>
             </div>
-            <div class="stat-line">
-                <span>Transform:</span>
-                <span class="stat-value" id="transformVal">None</span>
+        </div>
+
+        <div class="controls" id="controls" style="display: none;">
+            <h3>Adjust Text Rotation</h3>
+            
+            <div class="control-group">
+                <label>X-Axis Rotation (Tilt Forward/Back)</label>
+                <input type="range" id="xRotation" min="-180" max="180" value="0" step="1">
+                <div class="control-value" id="xValue">0°</div>
+            </div>
+            
+            <div class="control-group">
+                <label>Y-Axis Rotation (Turn Left/Right)</label>
+                <input type="range" id="yRotation" min="-180" max="180" value="0" step="1">
+                <div class="control-value" id="yValue">0°</div>
+            </div>
+            
+            <div class="control-group">
+                <label>Z-Axis Rotation (Spin)</label>
+                <input type="range" id="zRotation" min="-180" max="180" value="0" step="1">
+                <div class="control-value" id="zValue">0°</div>
+            </div>
+            
+            <div class="control-group">
+                <label>Gyro Multiplier</label>
+                <input type="range" id="gyroMultiplier" min="0" max="3" value="1" step="0.1">
+                <div class="control-value" id="multValue">1.0x</div>
+            </div>
+
+            <div class="control-group">
+                <label>Invert X</label>
+                <input type="checkbox" id="invertX">
+                <label>Invert Y</label>
+                <input type="checkbox" id="invertY">
+            </div>
+            
+            <div class="effect-buttons">
+                <button class="effect-btn" onclick="setEffect('standing')">Standing Upright</button>
+                <button class="effect-btn" onclick="setEffect('flat')">Flat on Ground</button>
+                <button class="effect-btn" onclick="setEffect('billboard')">Billboard (Always Facing)</button>
+                <button class="effect-btn" onclick="setEffect('floating')">Floating</button>
             </div>
         </div>
         
@@ -196,41 +308,105 @@
             <div class="shadow">STANDING</div>
         </div>
         
-        <div class="error-msg" id="errorMsg">
-            <h3>Error</h3>
-            <p id="errorText"></p>
+        <div class="help-text" id="helpText" style="display: none;">
+            <p>Describe the effect you want: Does the text stay upright like a sign? Lay flat like writing on a table? Always face you like a billboard?</p>
         </div>
     </div>
 
     <script>
         const textWrapper = document.getElementById('textWrapper');
         const startBtn = document.getElementById('startBtn');
-        const stats = document.getElementById('stats');
         const statusEl = document.getElementById('status');
         const betaEl = document.getElementById('betaVal');
         const gammaEl = document.getElementById('gammaVal');
         const alphaEl = document.getElementById('alphaVal');
-        const transformEl = document.getElementById('transformVal');
-        const errorMsg = document.getElementById('errorMsg');
-        const errorText = document.getElementById('errorText');
+        const controls = document.getElementById('controls');
+        const helpText = document.getElementById('helpText');
         
-        let beta = 0;
-        let gamma = 0;
-        let alpha = 0;
+        // Control elements
+        const xRotationSlider = document.getElementById('xRotation');
+        const yRotationSlider = document.getElementById('yRotation');
+        const zRotationSlider = document.getElementById('zRotation');
+        const gyroMultiplierSlider = document.getElementById('gyroMultiplier');
+        const xValueEl = document.getElementById('xValue');
+        const yValueEl = document.getElementById('yValue');
+        const zValueEl = document.getElementById('zValue');
+        const multValueEl = document.getElementById('multValue');
+        const invertXEl = document.getElementById('invertX');
+        const invertYEl = document.getElementById('invertY');
+        
+        let deviceBeta = 0;
+        let deviceGamma = 0;
+        let deviceAlpha = 0;
+        let baseX = 0;
+        let baseY = 0;
+        let baseZ = 0;
+        let gyroMultiplier = 1;
         let isTracking = false;
         
-        function showError(message) {
-            errorText.textContent = message;
-            errorMsg.style.display = 'block';
-            setTimeout(() => {
-                errorMsg.style.display = 'none';
-            }, 5000);
+        function updateControlValues() {
+            xValueEl.textContent = `${xRotationSlider.value}°`;
+            yValueEl.textContent = `${yRotationSlider.value}°`;
+            zValueEl.textContent = `${zRotationSlider.value}°`;
+            multValueEl.textContent = `${gyroMultiplierSlider.value}x`;
+            
+            baseX = parseFloat(xRotationSlider.value);
+            baseY = parseFloat(yRotationSlider.value);
+            baseZ = parseFloat(zRotationSlider.value);
+            gyroMultiplier = parseFloat(gyroMultiplierSlider.value);
+            
+            updateTextOrientation();
+        }
+        
+        xRotationSlider.addEventListener('input', updateControlValues);
+        yRotationSlider.addEventListener('input', updateControlValues);
+        zRotationSlider.addEventListener('input', updateControlValues);
+        gyroMultiplierSlider.addEventListener('input', updateControlValues);
+        invertXEl.addEventListener('change', updateTextOrientation);
+        invertYEl.addEventListener('change', updateTextOrientation);
+        
+        function setEffect(effect) {
+            switch(effect) {
+                case 'standing':
+                    xRotationSlider.value = 0;
+                    yRotationSlider.value = 0;
+                    zRotationSlider.value = 0;
+                    gyroMultiplierSlider.value = 1;
+                    invertXEl.checked = true;
+                    invertYEl.checked = false;
+                    break;
+                case 'flat':
+                    xRotationSlider.value = -90;
+                    yRotationSlider.value = 0;
+                    zRotationSlider.value = 0;
+                    gyroMultiplierSlider.value = 1;
+                    invertXEl.checked = false;
+                    invertYEl.checked = false;
+                    break;
+                case 'billboard':
+                    xRotationSlider.value = 0;
+                    yRotationSlider.value = 0;
+                    zRotationSlider.value = 0;
+                    gyroMultiplierSlider.value = -1;
+                    invertXEl.checked = false;
+                    invertYEl.checked = true;
+                    break;
+                case 'floating':
+                    xRotationSlider.value = 45;
+                    yRotationSlider.value = 30;
+                    zRotationSlider.value = 0;
+                    gyroMultiplierSlider.value = 0.5;
+                    invertXEl.checked = false;
+                    invertYEl.checked = false;
+                    break;
+            }
+            updateControlValues();
         }
         
         function updateStats() {
-            betaEl.textContent = `${beta.toFixed(1)}°`;
-            gammaEl.textContent = `${gamma.toFixed(1)}°`;
-            alphaEl.textContent = `${alpha.toFixed(1)}°`;
+            betaEl.textContent = `${deviceBeta.toFixed(1)}°`;
+            gammaEl.textContent = `${deviceGamma.toFixed(1)}°`;
+            alphaEl.textContent = `${deviceAlpha.toFixed(1)}°`;
             
             if (isTracking) {
                 statusEl.textContent = 'Active';
@@ -239,84 +415,67 @@
         }
         
         function updateTextOrientation() {
-            // Clamp values
-            const clampedBeta = Math.max(-90, Math.min(90, beta));
-            const clampedGamma = Math.max(-90, Math.min(90, gamma));
+            // Apply gyroscope values with multiplier
+            let gyroX = deviceBeta * gyroMultiplier;
+            let gyroY = deviceGamma * gyroMultiplier;
             
-            // Calculate rotations - simpler approach
-            const xRotation = -clampedBeta; // Tilt compensation
-            const yRotation = clampedGamma;
-            const zRotation = 0;
+            // Apply inversions
+            if (invertXEl.checked) gyroX = -gyroX;
+            if (invertYEl.checked) gyroY = -gyroY;
             
-            // Build transform
-            const transform = `
-                perspective(1000px)
+            // Calculate final rotations
+            const xRotation = baseX + gyroX;
+            const yRotation = baseY + gyroY;
+            const zRotation = baseZ;
+            
+            // Apply transform
+            textWrapper.style.transform = `
                 rotateX(${xRotation}deg) 
                 rotateY(${yRotation}deg) 
                 rotateZ(${zRotation}deg)
             `;
-            
-            textWrapper.style.transform = transform;
-            
-            // Update transform display
-            transformEl.textContent = `X:${xRotation.toFixed(0)}° Y:${yRotation.toFixed(0)}°`;
-            transformEl.style.fontSize = '0.7rem';
             
             updateStats();
         }
         
         function handleOrientation(event) {
             if (event.beta !== null && event.gamma !== null) {
-                beta = event.beta;
-                gamma = event.gamma;
-                alpha = event.alpha || 0;
+                deviceBeta = event.beta;
+                deviceGamma = event.gamma;
+                deviceAlpha = event.alpha || 0;
                 isTracking = true;
                 
                 updateTextOrientation();
-            } else {
-                showError('Null orientation values received');
             }
         }
         
         function startGyroscope() {
-            statusEl.textContent = 'Requesting...';
-            statusEl.style.color = '#ffff4a';
-            
             if (window.DeviceOrientationEvent) {
-                // iOS 13+ requires permission
                 if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                     DeviceOrientationEvent.requestPermission()
                         .then(response => {
                             if (response === 'granted') {
                                 window.addEventListener('deviceorientation', handleOrientation);
-                                startBtn.style.display = 'none';
-                                textWrapper.style.display = 'block';
-                                statusEl.textContent = 'Permission Granted';
-                                statusEl.style.color = '#4aff4a';
-                            } else {
-                                showError('Permission denied for device orientation.');
-                                statusEl.textContent = 'Permission Denied';
-                                statusEl.style.color = '#ff4a4a';
+                                showInterface();
                             }
                         })
                         .catch(error => {
-                            showError(`Permission error: ${error.message}`);
-                            statusEl.textContent = 'Error';
-                            statusEl.style.color = '#ff4a4a';
+                            console.error('Permission error:', error);
                         });
                 } else {
-                    // Non-iOS devices
                     window.addEventListener('deviceorientation', handleOrientation);
-                    startBtn.style.display = 'none';
-                    textWrapper.style.display = 'block';
-                    statusEl.textContent = 'Started';
-                    statusEl.style.color = '#4aff4a';
+                    showInterface();
                 }
-            } else {
-                showError('DeviceOrientation not supported');
-                statusEl.textContent = 'Not Supported';
-                statusEl.style.color = '#ff4a4a';
             }
+        }
+        
+        function showInterface() {
+            startBtn.style.display = 'none';
+            textWrapper.style.display = 'block';
+            controls.style.display = 'block';
+            helpText.style.display = 'block';
+            statusEl.textContent = 'Started';
+            statusEl.style.color = '#4aff4a';
         }
         
         startBtn.addEventListener('click', startGyroscope);
@@ -327,15 +486,10 @@
             if (e.key === 'm' || e.key === 'M') {
                 mouseEnabled = !mouseEnabled;
                 if (mouseEnabled) {
-                    if (textWrapper.style.display === 'none') {
-                        startBtn.style.display = 'none';
-                        textWrapper.style.display = 'block';
-                    }
+                    showInterface();
                     statusEl.textContent = 'Mouse Mode';
                     statusEl.style.color = '#ff4aff';
                     isTracking = true;
-                } else {
-                    statusEl.textContent = 'Mouse Mode Off';
                 }
             }
         });
@@ -345,23 +499,10 @@
                 const centerX = window.innerWidth / 2;
                 const centerY = window.innerHeight / 2;
                 
-                gamma = ((e.clientX - centerX) / centerX) * 45;
-                beta = ((e.clientY - centerY) / centerY) * 45;
-                alpha = 0;
+                deviceGamma = ((e.clientX - centerX) / centerX) * 45;
+                deviceBeta = ((e.clientY - centerY) / centerY) * 45;
                 
                 updateTextOrientation();
-            }
-        });
-        
-        // Test button for debugging
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 't' || e.key === 'T') {
-                if (textWrapper.style.display === 'none') {
-                    startBtn.style.display = 'none';
-                    textWrapper.style.display = 'block';
-                    statusEl.textContent = 'Test Mode';
-                    statusEl.style.color = '#ffff4a';
-                }
             }
         });
     </script>
