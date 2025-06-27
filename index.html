@@ -109,6 +109,50 @@
             margin-bottom: 15px;
             color: #4a9eff;
             font-size: 1.1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .close-btn {
+            width: 24px;
+            height: 24px;
+            background: transparent;
+            border: 1px solid #4a9eff;
+            border-radius: 50%;
+            color: #4a9eff;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #4a9eff;
+            color: #000;
+        }
+
+        .toggle-controls-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #4a9eff;
+            color: #4a9eff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            z-index: 99;
+            display: none;
+        }
+
+        .toggle-controls-btn:hover {
+            background: #4a9eff;
+            color: #000;
         }
 
         .control-group {
@@ -259,8 +303,13 @@
             </div>
         </div>
 
+        <button class="toggle-controls-btn" id="toggleControlsBtn" onclick="toggleControls()">Show Controls</button>
+        
         <div class="controls" id="controls" style="display: none;">
-            <h3>Adjust Text Rotation</h3>
+            <h3>
+                Adjust Text Rotation
+                <button class="close-btn" onclick="toggleControls()">×</button>
+            </h3>
             
             <div class="control-group">
                 <label>X-Axis Rotation (Tilt Forward/Back)</label>
@@ -335,6 +384,8 @@
         const invertXEl = document.getElementById('invertX');
         const invertYEl = document.getElementById('invertY');
         
+        const toggleControlsBtn = document.getElementById('toggleControlsBtn');
+        
         let deviceBeta = 0;
         let deviceGamma = 0;
         let deviceAlpha = 0;
@@ -343,6 +394,16 @@
         let baseZ = 0;
         let gyroMultiplier = 1;
         let isTracking = false;
+        
+        function toggleControls() {
+            if (controls.style.display === 'none') {
+                controls.style.display = 'block';
+                toggleControlsBtn.style.display = 'none';
+            } else {
+                controls.style.display = 'none';
+                toggleControlsBtn.style.display = 'block';
+            }
+        }
         
         function updateControlValues() {
             xValueEl.textContent = `${xRotationSlider.value}°`;
@@ -473,6 +534,7 @@
             startBtn.style.display = 'none';
             textWrapper.style.display = 'block';
             controls.style.display = 'block';
+            toggleControlsBtn.style.display = 'none';
             helpText.style.display = 'block';
             statusEl.textContent = 'Started';
             statusEl.style.color = '#4aff4a';
