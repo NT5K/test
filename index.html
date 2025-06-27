@@ -54,6 +54,23 @@
             text-align: center;
         }
 
+        .static-text {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 4rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #666;
+            text-shadow: 
+                0 0 5px rgba(255,255,255,0.2),
+                0 5px 15px rgba(0,0,0,0.5);
+            text-align: center;
+            opacity: 0.5;
+        }
+
         .shadow {
             position: absolute;
             top: 100%;
@@ -357,6 +374,8 @@
             <div class="shadow">STANDING</div>
         </div>
         
+        <div class="static-text" id="staticText" style="display: none;">STANDING</div>
+        
         <div class="help-text" id="helpText" style="display: none;">
             <p>Describe the effect you want: Does the text stay upright like a sign? Lay flat like writing on a table? Always face you like a billboard?</p>
         </div>
@@ -364,6 +383,7 @@
 
     <script>
         const textWrapper = document.getElementById('textWrapper');
+        const staticText = document.getElementById('staticText');
         const startBtn = document.getElementById('startBtn');
         const statusEl = document.getElementById('status');
         const betaEl = document.getElementById('betaVal');
@@ -533,6 +553,7 @@
         function showInterface() {
             startBtn.style.display = 'none';
             textWrapper.style.display = 'block';
+            staticText.style.display = 'block';
             controls.style.display = 'block';
             toggleControlsBtn.style.display = 'none';
             helpText.style.display = 'block';
