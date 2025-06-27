@@ -1,678 +1,176 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gyroscope Text Illusion - Per Letter</title>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gyroscope AR Text Demo v2</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      /* ========== Global Layout ========== */
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        background: #111;
+        color: #fff;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        perspective: 1000px; /* depth for 3‑D rotations */
+        -webkit-font-smoothing: antialiased;
+        text-rendering: geometricPrecision;
+      }
 
-        body {
-            font-family: 'Arial Black', sans-serif;
-            background: #1a1a1a;
-            color: #fff;
-            overflow: hidden;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+      /* ========== Scene ========== */
+      #content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        pointer-events: none;
+      }
 
-        .container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            perspective: 1000px;
-        }
+      #tiltingText {
+        font-size: clamp(2.2rem, 9vw, 6rem);
+        font-weight: 700;
+        transform-style: preserve-3d;
+        transform-origin: bottom center; /* hinge on the bezel */
+        transform: rotateX(0deg) rotateY(0deg) translateZ(0px);
+        transition: transform 0.05s linear;
+        /* depth cue */
+        text-shadow: 0 2px 8px rgba(0, 255, 255, 0.4);
+      }
 
-        .text-wrapper {
-            position: relative;
-            transform-style: preserve-3d;
-            z-index: 10;
-            display: flex;
-            gap: 5px;
-        }
+      #staticText {
+        font-size: clamp(1rem, 4vw, 2rem);
+        color: #888;
+        margin-top: 0.5rem;
+      }
 
-        .letter {
-            font-size: 4rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            color: #fff;
-            text-shadow: 
-                0 0 10px rgba(255,255,255,0.5),
-                0 0 20px rgba(255,255,255,0.3),
-                0 10px 30px rgba(0,0,0,0.8);
-            transform-style: preserve-3d;
-            display: inline-block;
-            transition: transform 0.1s ease-out;
-            position: relative;
-        }
+      /* ========== Stats ========== */
+      #stats {
+        position: fixed;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        text-align: center;
+        font-family: monospace;
+        line-height: 1.4;
+      }
 
-        .letter-shadow {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            width: 100%;
-            font-size: 4rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            color: rgba(0,0,0,0.5);
-            filter: blur(10px);
-            transform: rotateX(90deg) scaleY(0.3) translateZ(-50px);
-            transform-origin: top center;
-            opacity: 0.5;
-        }
+      #values {
+        color: #0f0;
+        font-size: 1.2rem;
+      }
 
-        .static-text {
-            position: absolute;
-            top: 60%;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 4rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: #666;
-            text-shadow: 
-                0 0 5px rgba(255,255,255,0.2),
-                0 5px 15px rgba(0,0,0,0.5);
-            text-align: center;
-            opacity: 0.5;
-        }
-
-        .permission-btn {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 20px 40px;
-            font-size: 1.2rem;
-            background: #4a9eff;
-            color: white;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 10px 30px rgba(74, 158, 255, 0.3);
-            z-index: 100;
-        }
-
-        .permission-btn:hover {
-            background: #357abd;
-            transform: translate(-50%, -50%) scale(1.05);
-            box-shadow: 0 15px 40px rgba(74, 158, 255, 0.4);
-        }
-
-        .toggle-controls-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.8);
-            border: 1px solid #4a9eff;
-            color: #4a9eff;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-            z-index: 99;
-            display: none;
-        }
-
-        .toggle-controls-btn:hover {
-            background: #4a9eff;
-            color: #000;
-        }
-
-        .controls {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.9);
-            padding: 20px;
-            border-radius: 10px;
-            border: 1px solid #4a9eff;
-            z-index: 100;
-            max-width: 300px;
-        }
-
-        .controls h3 {
-            margin-bottom: 15px;
-            color: #4a9eff;
-            font-size: 1.1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .close-btn {
-            width: 24px;
-            height: 24px;
-            background: transparent;
-            border: 1px solid #4a9eff;
-            border-radius: 50%;
-            color: #4a9eff;
-            cursor: pointer;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .close-btn:hover {
-            background: #4a9eff;
-            color: #000;
-        }
-
-        .control-group {
-            margin-bottom: 15px;
-        }
-
-        .control-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 0.9rem;
-            color: #aaa;
-        }
-
-        .control-group input[type="range"] {
-            width: 100%;
-            margin-bottom: 5px;
-        }
-
-        .control-value {
-            text-align: right;
-            font-size: 0.8rem;
-            color: #4a9eff;
-            font-family: monospace;
-        }
-
-        .effect-buttons {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #333;
-        }
-
-        .effect-btn {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            background: #333;
-            border: 1px solid #555;
-            color: #fff;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-
-        .effect-btn:hover {
-            background: #444;
-            border-color: #4a9eff;
-        }
-
-        .stats {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            font-size: 0.9rem;
-            color: #4a9eff;
-            font-family: 'Courier New', monospace;
-            background: rgba(0,0,0,0.8);
-            padding: 15px;
-            border-radius: 10px;
-            border: 1px solid #4a9eff;
-            z-index: 100;
-            min-width: 250px;
-        }
-
-        .stats h3 {
-            margin-bottom: 10px;
-            color: #fff;
-            font-size: 1.1rem;
-        }
-
-        .stat-line {
-            margin: 5px 0;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .stat-value {
-            color: #fff;
-            font-weight: bold;
-        }
-
-        .help-text {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.8);
-            padding: 15px 25px;
-            border-radius: 10px;
-            border: 1px solid #4a9eff;
-            font-size: 0.9rem;
-            text-align: center;
-            max-width: 600px;
-        }
-
-        .grid {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
-            background-size: 50px 50px;
-            opacity: 0.3;
-            z-index: 1;
-        }
-
-        @media (max-width: 768px) {
-            .letter, .letter-shadow {
-                font-size: 2.5rem;
-            }
-            .static-text {
-                font-size: 2.5rem;
-            }
-            .controls {
-                top: auto;
-                bottom: 100px;
-                right: 10px;
-                left: 10px;
-                max-width: none;
-            }
-            .stats {
-                font-size: 0.8rem;
-                min-width: 200px;
-            }
-        }
+      #status {
+        margin-top: 0.25rem;
+        font-size: 0.75rem;
+        color: #888;
+      }
     </style>
-</head>
-<body>
-    <div class="container">
-        <div class="grid"></div>
-        
-        <div class="stats" id="stats">
-            <h3>Gyroscope Stats</h3>
-            <div class="stat-line">
-                <span>Status:</span>
-                <span class="stat-value" id="status">Not Started</span>
-            </div>
-            <div class="stat-line">
-                <span>Device Beta:</span>
-                <span class="stat-value" id="betaVal">0°</span>
-            </div>
-            <div class="stat-line">
-                <span>Device Gamma:</span>
-                <span class="stat-value" id="gammaVal">0°</span>
-            </div>
-            <div class="stat-line">
-                <span>Device Alpha:</span>
-                <span class="stat-value" id="alphaVal">0°</span>
-            </div>
-        </div>
+  </head>
+  <body>
+    <div id="content">
+      <span id="tiltingText">Always Flat</span>
+      <span id="staticText">Reference (static)</span>
+    </div>
 
-        <button class="toggle-controls-btn" id="toggleControlsBtn" onclick="toggleControls()">Show Controls</button>
-        
-        <div class="controls" id="controls" style="display: none;">
-            <h3>
-                Adjust Text Rotation
-                <button class="close-btn" onclick="toggleControls()">×</button>
-            </h3>
-            
-            <div class="control-group">
-                <label>X-Axis Rotation (Tilt Forward/Back)</label>
-                <input type="range" id="xRotation" min="-180" max="180" value="0" step="1">
-                <div class="control-value" id="xValue">0°</div>
-            </div>
-            
-            <div class="control-group">
-                <label>Y-Axis Rotation (Turn Left/Right)</label>
-                <input type="range" id="yRotation" min="-180" max="180" value="0" step="1">
-                <div class="control-value" id="yValue">0°</div>
-            </div>
-            
-            <div class="control-group">
-                <label>Z-Axis Rotation (Spin)</label>
-                <input type="range" id="zRotation" min="-180" max="180" value="0" step="1">
-                <div class="control-value" id="zValue">0°</div>
-            </div>
-            
-            <div class="control-group">
-                <label>Gyro Multiplier</label>
-                <input type="range" id="gyroMultiplier" min="0" max="3" value="1" step="0.1">
-                <div class="control-value" id="multValue">1.0x</div>
-            </div>
-
-            <div class="control-group">
-                <label>Letter Offset</label>
-                <input type="range" id="letterOffset" min="0" max="50" value="10" step="1">
-                <div class="control-value" id="offsetValue">10°</div>
-            </div>
-
-            <div class="control-group">
-                <label>Wave Effect</label>
-                <input type="checkbox" id="waveEffect" checked>
-                <label>Cascade Effect</label>
-                <input type="checkbox" id="cascadeEffect">
-            </div>
-
-            <div class="control-group">
-                <label>Invert X</label>
-                <input type="checkbox" id="invertX">
-                <label>Invert Y</label>
-                <input type="checkbox" id="invertY">
-            </div>
-            
-            <div class="effect-buttons">
-                <button class="effect-btn" onclick="setEffect('standing')">Standing Letters</button>
-                <button class="effect-btn" onclick="setEffect('wave')">Wave Pattern</button>
-                <button class="effect-btn" onclick="setEffect('cascade')">Cascade</button>
-                <button class="effect-btn" onclick="setEffect('spiral')">Spiral</button>
-            </div>
-        </div>
-        
-        <button class="permission-btn" id="startBtn">Enable Gyroscope</button>
-        
-        <div class="text-wrapper" id="textWrapper" style="display: none;">
-            <!-- Letters will be generated here -->
-        </div>
-        
-        <div class="static-text" id="staticText" style="display: none;">STANDING</div>
-        
-        <div class="help-text" id="helpText" style="display: none;">
-            <p>Each letter now moves independently! Try the wave or cascade effects.</p>
-        </div>
+    <div id="stats">
+      <div id="values">α: -- °/s<br />β: -- °/s<br />γ: -- °/s</div>
+      <div id="status">Initializing…</div>
     </div>
 
     <script>
-        const textWrapper = document.getElementById('textWrapper');
-        const staticText = document.getElementById('staticText');
-        const startBtn = document.getElementById('startBtn');
-        const statusEl = document.getElementById('status');
-        const betaEl = document.getElementById('betaVal');
-        const gammaEl = document.getElementById('gammaVal');
-        const alphaEl = document.getElementById('alphaVal');
-        const controls = document.getElementById('controls');
-        const helpText = document.getElementById('helpText');
-        const toggleControlsBtn = document.getElementById('toggleControlsBtn');
-        
-        // Control elements
-        const xRotationSlider = document.getElementById('xRotation');
-        const yRotationSlider = document.getElementById('yRotation');
-        const zRotationSlider = document.getElementById('zRotation');
-        const gyroMultiplierSlider = document.getElementById('gyroMultiplier');
-        const letterOffsetSlider = document.getElementById('letterOffset');
-        const xValueEl = document.getElementById('xValue');
-        const yValueEl = document.getElementById('yValue');
-        const zValueEl = document.getElementById('zValue');
-        const multValueEl = document.getElementById('multValue');
-        const offsetValueEl = document.getElementById('offsetValue');
-        const invertXEl = document.getElementById('invertX');
-        const invertYEl = document.getElementById('invertY');
-        const waveEffectEl = document.getElementById('waveEffect');
-        const cascadeEffectEl = document.getElementById('cascadeEffect');
-        
-        const text = "STANDING";
-        let letters = [];
-        let deviceBeta = 0;
-        let deviceGamma = 0;
-        let deviceAlpha = 0;
-        let baseX = 0;
-        let baseY = 0;
-        let baseZ = 0;
-        let gyroMultiplier = 1;
-        let letterOffset = 10;
-        let isTracking = false;
-        let animationTime = 0;
-        
-        // Create letter elements
-        function createLetters() {
-            textWrapper.innerHTML = '';
-            letters = [];
-            
-            for (let i = 0; i < text.length; i++) {
-                const letterContainer = document.createElement('div');
-                letterContainer.style.display = 'inline-block';
-                letterContainer.style.transformStyle = 'preserve-3d';
-                
-                const letter = document.createElement('span');
-                letter.className = 'letter';
-                letter.textContent = text[i];
-                
-                const shadow = document.createElement('span');
-                shadow.className = 'letter-shadow';
-                shadow.textContent = text[i];
-                
-                letterContainer.appendChild(letter);
-                letterContainer.appendChild(shadow);
-                textWrapper.appendChild(letterContainer);
-                
-                letters.push({
-                    element: letterContainer,
-                    index: i
-                });
-            }
+      (function () {
+        const tiltingEl = document.getElementById("tiltingText");
+        const valuesEl = document.getElementById("values");
+        const statusEl = document.getElementById("status");
+
+        /*
+         * =============================================================
+         *  Orientation logic – keep stretching toward the viewer.
+         *
+         *  β (front/back tilt) ranges roughly:
+         *     −180   …   0   …   90  …  180  degrees
+         *    top‑toward  flat     upright
+         *
+         *  We map text rotationX = −β so:
+         *     • β  0°   → rotX 0°   (flat)
+         *     • β 90°  → rotX −90° (edge‑on)
+         *     • β ‑90° → rotX 90°  (full face as phone leans toward viewer)
+         *
+         *  In other words, no clamping: the text keeps “stretching” in the
+         *  same direction beyond upright, producing a continuous AR feel.
+         * =============================================================
+         */
+        function onOrientation(e) {
+          const beta = e.beta ?? 0;   // front/back tilt (‑180 → 180)
+          const gamma = e.gamma ?? 0; // left/right tilt  (‑90  → 90)
+
+          // Primary rotation – flip sign so tilt toward viewer is positive
+          let rotX = -beta;
+
+          // Clamp extremes to avoid gimbal madness but keep wide range
+          rotX = Math.max(Math.min(rotX, 120), -120);
+
+          // Sideways lean, scaled down for readability
+          let rotY = -gamma * 0.6;
+          rotY = Math.max(Math.min(rotY, 60), -60);
+
+          const zLift = 20; // px – slight pop‑out for depth
+          tiltingEl.style.transform = `translateZ(${zLift}px) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
         }
-        
-        function toggleControls() {
-            if (controls.style.display === 'none') {
-                controls.style.display = 'block';
-                toggleControlsBtn.style.display = 'none';
-            } else {
-                controls.style.display = 'none';
-                toggleControlsBtn.style.display = 'block';
-            }
+
+        /* ========== Gyroscope stats ========== */
+        function onMotion(e) {
+          const r = e.rotationRate || {};
+          const a = r.alpha != null ? r.alpha.toFixed(1) : "--";
+          const b = r.beta  != null ? r.beta .toFixed(1) : "--";
+          const g = r.gamma != null ? r.gamma.toFixed(1) : "--";
+          valuesEl.innerHTML = `α: ${a} °/s<br>β: ${b} °/s<br>γ: ${g} °/s`;
         }
-        
-        function updateControlValues() {
-            xValueEl.textContent = `${xRotationSlider.value}°`;
-            yValueEl.textContent = `${yRotationSlider.value}°`;
-            zValueEl.textContent = `${zRotationSlider.value}°`;
-            multValueEl.textContent = `${gyroMultiplierSlider.value}x`;
-            offsetValueEl.textContent = `${letterOffsetSlider.value}°`;
-            
-            baseX = parseFloat(xRotationSlider.value);
-            baseY = parseFloat(yRotationSlider.value);
-            baseZ = parseFloat(zRotationSlider.value);
-            gyroMultiplier = parseFloat(gyroMultiplierSlider.value);
-            letterOffset = parseFloat(letterOffsetSlider.value);
-            
-            updateTextOrientation();
+
+        /* ========== Permissions & setup ========== */
+        function initSensors() {
+          window.addEventListener("deviceorientation", onOrientation, true);
+          window.addEventListener("devicemotion", onMotion, true);
+          statusEl.textContent = "Listening to sensors…";
         }
-        
-        xRotationSlider.addEventListener('input', updateControlValues);
-        yRotationSlider.addEventListener('input', updateControlValues);
-        zRotationSlider.addEventListener('input', updateControlValues);
-        gyroMultiplierSlider.addEventListener('input', updateControlValues);
-        letterOffsetSlider.addEventListener('input', updateControlValues);
-        invertXEl.addEventListener('change', updateTextOrientation);
-        invertYEl.addEventListener('change', updateTextOrientation);
-        waveEffectEl.addEventListener('change', updateTextOrientation);
-        cascadeEffectEl.addEventListener('change', updateTextOrientation);
-        
-        function setEffect(effect) {
-            switch(effect) {
-                case 'standing':
-                    xRotationSlider.value = 0;
-                    yRotationSlider.value = 0;
-                    zRotationSlider.value = 0;
-                    gyroMultiplierSlider.value = 1;
-                    letterOffsetSlider.value = 5;
-                    invertXEl.checked = true;
-                    invertYEl.checked = false;
-                    waveEffectEl.checked = false;
-                    cascadeEffectEl.checked = false;
-                    break;
-                case 'wave':
-                    letterOffsetSlider.value = 15;
-                    waveEffectEl.checked = true;
-                    cascadeEffectEl.checked = false;
-                    break;
-                case 'cascade':
-                    letterOffsetSlider.value = 20;
-                    waveEffectEl.checked = false;
-                    cascadeEffectEl.checked = true;
-                    break;
-                case 'spiral':
-                    xRotationSlider.value = 30;
-                    yRotationSlider.value = 0;
-                    zRotationSlider.value = 0;
-                    letterOffsetSlider.value = 30;
-                    waveEffectEl.checked = true;
-                    cascadeEffectEl.checked = true;
-                    break;
-            }
-            updateControlValues();
+
+        function requestMotionPermissionIfNeeded(cb) {
+          if (
+            typeof DeviceMotionEvent !== "undefined" &&
+            typeof DeviceMotionEvent.requestPermission === "function"
+          ) {
+            DeviceMotionEvent.requestPermission()
+              .then((state) => {
+                if (state === "granted") cb();
+                else statusEl.textContent = "Motion permission denied.";
+              })
+              .catch(() => (statusEl.textContent = "Motion permission error."));
+          } else {
+            cb();
+          }
         }
-        
-        function updateStats() {
-            betaEl.textContent = `${deviceBeta.toFixed(1)}°`;
-            gammaEl.textContent = `${deviceGamma.toFixed(1)}°`;
-            alphaEl.textContent = `${deviceAlpha.toFixed(1)}°`;
-            
-            if (isTracking) {
-                statusEl.textContent = 'Active';
-                statusEl.style.color = '#4aff4a';
-            }
+
+        function setup() {
+          if (!("DeviceMotionEvent" in window)) {
+            statusEl.textContent = "DeviceMotionEvent not supported.";
+            return;
+          }
+          requestMotionPermissionIfNeeded(initSensors);
         }
-        
-        function updateTextOrientation() {
-            animationTime += 0.05;
-            
-            // Apply gyroscope values with multiplier
-            let gyroX = deviceBeta * gyroMultiplier;
-            let gyroY = deviceGamma * gyroMultiplier;
-            
-            // Apply inversions
-            if (invertXEl.checked) gyroX = -gyroX;
-            if (invertYEl.checked) gyroY = -gyroY;
-            
-            // Update each letter
-            letters.forEach((letter, index) => {
-                const offsetMultiplier = index - (letters.length - 1) / 2;
-                
-                let xRotation = baseX + gyroX;
-                let yRotation = baseY + gyroY;
-                let zRotation = baseZ;
-                
-                // Apply wave effect
-                if (waveEffectEl.checked) {
-                    xRotation += Math.sin(animationTime + index * 0.5) * letterOffset * 0.5;
-                    yRotation += Math.cos(animationTime + index * 0.5) * letterOffset * 0.3;
-                }
-                
-                // Apply cascade effect
-                if (cascadeEffectEl.checked) {
-                    xRotation += offsetMultiplier * letterOffset;
-                    yRotation += offsetMultiplier * letterOffset * 0.5;
-                    zRotation += offsetMultiplier * letterOffset * 0.3;
-                } else {
-                    // Regular offset
-                    xRotation += offsetMultiplier * letterOffset * 0.2;
-                    yRotation += offsetMultiplier * letterOffset * 0.1;
-                }
-                
-                // Apply transform
-                letter.element.style.transform = `
-                    rotateX(${xRotation}deg) 
-                    rotateY(${yRotation}deg) 
-                    rotateZ(${zRotation}deg)
-                `;
-            });
-            
-            updateStats();
+
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        if (isIOS) {
+          statusEl.textContent = "Tap to enable motion sensors ✋";
+          window.addEventListener("click", setup, { once: true });
+        } else {
+          setup();
         }
-        
-        function handleOrientation(event) {
-            if (event.beta !== null && event.gamma !== null) {
-                deviceBeta = event.beta;
-                deviceGamma = event.gamma;
-                deviceAlpha = event.alpha || 0;
-                isTracking = true;
-                
-                updateTextOrientation();
-            }
-        }
-        
-        function startGyroscope() {
-            if (window.DeviceOrientationEvent) {
-                if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                    DeviceOrientationEvent.requestPermission()
-                        .then(response => {
-                            if (response === 'granted') {
-                                window.addEventListener('deviceorientation', handleOrientation);
-                                showInterface();
-                            }
-                        })
-                        .catch(error => {
-                            console.error('Permission error:', error);
-                        });
-                } else {
-                    window.addEventListener('deviceorientation', handleOrientation);
-                    showInterface();
-                }
-            }
-        }
-        
-        function showInterface() {
-            createLetters();
-            startBtn.style.display = 'none';
-            textWrapper.style.display = 'flex';
-            staticText.style.display = 'block';
-            controls.style.display = 'block';
-            toggleControlsBtn.style.display = 'none';
-            helpText.style.display = 'block';
-            statusEl.textContent = 'Started';
-            statusEl.style.color = '#4aff4a';
-            
-            // Start animation loop
-            animate();
-        }
-        
-        function animate() {
-            updateTextOrientation();
-            requestAnimationFrame(animate);
-        }
-        
-        startBtn.addEventListener('click', startGyroscope);
-        
-        // Mouse control for testing
-        let mouseEnabled = false;
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'm' || e.key === 'M') {
-                mouseEnabled = !mouseEnabled;
-                if (mouseEnabled) {
-                    showInterface();
-                    statusEl.textContent = 'Mouse Mode';
-                    statusEl.style.color = '#ff4aff';
-                    isTracking = true;
-                }
-            }
-        });
-        
-        document.addEventListener('mousemove', (e) => {
-            if (mouseEnabled) {
-                const centerX = window.innerWidth / 2;
-                const centerY = window.innerHeight / 2;
-                
-                deviceGamma = ((e.clientX - centerX) / centerX) * 45;
-                deviceBeta = ((e.clientY - centerY) / centerY) * 45;
-                
-                updateTextOrientation();
-            }
-        });
+      })();
     </script>
-</body>
+  </body>
 </html>
