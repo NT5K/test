@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gyroscope Text Illusion</title>
+    <title>Gyroscope Text Illusion - Per Letter</title>
     <style>
         * {
             margin: 0;
@@ -35,23 +35,39 @@
         .text-wrapper {
             position: relative;
             transform-style: preserve-3d;
-            transition: transform 0.1s ease-out;
             z-index: 10;
+            display: flex;
+            gap: 5px;
         }
 
-        .standing-text {
+        .letter {
             font-size: 4rem;
             font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
             color: #fff;
             text-shadow: 
                 0 0 10px rgba(255,255,255,0.5),
                 0 0 20px rgba(255,255,255,0.3),
                 0 10px 30px rgba(0,0,0,0.8);
             transform-style: preserve-3d;
-            display: block;
-            text-align: center;
+            display: inline-block;
+            transition: transform 0.1s ease-out;
+            position: relative;
+        }
+
+        .letter-shadow {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            font-size: 4rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            color: rgba(0,0,0,0.5);
+            filter: blur(10px);
+            transform: rotateX(90deg) scaleY(0.3) translateZ(-50px);
+            transform-origin: top center;
+            opacity: 0.5;
         }
 
         .static-text {
@@ -69,22 +85,6 @@
                 0 5px 15px rgba(0,0,0,0.5);
             text-align: center;
             opacity: 0.5;
-        }
-
-        .shadow {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            width: 100%;
-            font-size: 4rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: rgba(0,0,0,0.5);
-            filter: blur(15px);
-            transform: rotateX(90deg) scaleY(0.3) translateZ(-50px);
-            transform-origin: top center;
-            text-align: center;
         }
 
         .permission-btn {
@@ -108,6 +108,27 @@
             background: #357abd;
             transform: translate(-50%, -50%) scale(1.05);
             box-shadow: 0 15px 40px rgba(74, 158, 255, 0.4);
+        }
+
+        .toggle-controls-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #4a9eff;
+            color: #4a9eff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            z-index: 99;
+            display: none;
+        }
+
+        .toggle-controls-btn:hover {
+            background: #4a9eff;
+            color: #000;
         }
 
         .controls {
@@ -147,27 +168,6 @@
         }
 
         .close-btn:hover {
-            background: #4a9eff;
-            color: #000;
-        }
-
-        .toggle-controls-btn {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.8);
-            border: 1px solid #4a9eff;
-            color: #4a9eff;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-            z-index: 99;
-            display: none;
-        }
-
-        .toggle-controls-btn:hover {
             background: #4a9eff;
             color: #000;
         }
@@ -279,8 +279,11 @@
         }
 
         @media (max-width: 768px) {
-            .standing-text, .shadow {
-                font-size: 3rem;
+            .letter, .letter-shadow {
+                font-size: 2.5rem;
+            }
+            .static-text {
+                font-size: 2.5rem;
             }
             .controls {
                 top: auto;
@@ -353,6 +356,19 @@
             </div>
 
             <div class="control-group">
+                <label>Letter Offset</label>
+                <input type="range" id="letterOffset" min="0" max="50" value="10" step="1">
+                <div class="control-value" id="offsetValue">10°</div>
+            </div>
+
+            <div class="control-group">
+                <label>Wave Effect</label>
+                <input type="checkbox" id="waveEffect" checked>
+                <label>Cascade Effect</label>
+                <input type="checkbox" id="cascadeEffect">
+            </div>
+
+            <div class="control-group">
                 <label>Invert X</label>
                 <input type="checkbox" id="invertX">
                 <label>Invert Y</label>
@@ -360,24 +376,23 @@
             </div>
             
             <div class="effect-buttons">
-                <button class="effect-btn" onclick="setEffect('standing')">Standing Upright</button>
-                <button class="effect-btn" onclick="setEffect('flat')">Flat on Ground</button>
-                <button class="effect-btn" onclick="setEffect('billboard')">Billboard (Always Facing)</button>
-                <button class="effect-btn" onclick="setEffect('floating')">Floating</button>
+                <button class="effect-btn" onclick="setEffect('standing')">Standing Letters</button>
+                <button class="effect-btn" onclick="setEffect('wave')">Wave Pattern</button>
+                <button class="effect-btn" onclick="setEffect('cascade')">Cascade</button>
+                <button class="effect-btn" onclick="setEffect('spiral')">Spiral</button>
             </div>
         </div>
         
         <button class="permission-btn" id="startBtn">Enable Gyroscope</button>
         
         <div class="text-wrapper" id="textWrapper" style="display: none;">
-            <div class="standing-text">STANDING</div>
-            <div class="shadow">STANDING</div>
+            <!-- Letters will be generated here -->
         </div>
         
         <div class="static-text" id="staticText" style="display: none;">STANDING</div>
         
         <div class="help-text" id="helpText" style="display: none;">
-            <p>Describe the effect you want: Does the text stay upright like a sign? Lay flat like writing on a table? Always face you like a billboard?</p>
+            <p>Each letter now moves independently! Try the wave or cascade effects.</p>
         </div>
     </div>
 
@@ -391,21 +406,26 @@
         const alphaEl = document.getElementById('alphaVal');
         const controls = document.getElementById('controls');
         const helpText = document.getElementById('helpText');
+        const toggleControlsBtn = document.getElementById('toggleControlsBtn');
         
         // Control elements
         const xRotationSlider = document.getElementById('xRotation');
         const yRotationSlider = document.getElementById('yRotation');
         const zRotationSlider = document.getElementById('zRotation');
         const gyroMultiplierSlider = document.getElementById('gyroMultiplier');
+        const letterOffsetSlider = document.getElementById('letterOffset');
         const xValueEl = document.getElementById('xValue');
         const yValueEl = document.getElementById('yValue');
         const zValueEl = document.getElementById('zValue');
         const multValueEl = document.getElementById('multValue');
+        const offsetValueEl = document.getElementById('offsetValue');
         const invertXEl = document.getElementById('invertX');
         const invertYEl = document.getElementById('invertY');
+        const waveEffectEl = document.getElementById('waveEffect');
+        const cascadeEffectEl = document.getElementById('cascadeEffect');
         
-        const toggleControlsBtn = document.getElementById('toggleControlsBtn');
-        
+        const text = "STANDING";
+        let letters = [];
         let deviceBeta = 0;
         let deviceGamma = 0;
         let deviceAlpha = 0;
@@ -413,7 +433,38 @@
         let baseY = 0;
         let baseZ = 0;
         let gyroMultiplier = 1;
+        let letterOffset = 10;
         let isTracking = false;
+        let animationTime = 0;
+        
+        // Create letter elements
+        function createLetters() {
+            textWrapper.innerHTML = '';
+            letters = [];
+            
+            for (let i = 0; i < text.length; i++) {
+                const letterContainer = document.createElement('div');
+                letterContainer.style.display = 'inline-block';
+                letterContainer.style.transformStyle = 'preserve-3d';
+                
+                const letter = document.createElement('span');
+                letter.className = 'letter';
+                letter.textContent = text[i];
+                
+                const shadow = document.createElement('span');
+                shadow.className = 'letter-shadow';
+                shadow.textContent = text[i];
+                
+                letterContainer.appendChild(letter);
+                letterContainer.appendChild(shadow);
+                textWrapper.appendChild(letterContainer);
+                
+                letters.push({
+                    element: letterContainer,
+                    index: i
+                });
+            }
+        }
         
         function toggleControls() {
             if (controls.style.display === 'none') {
@@ -430,11 +481,13 @@
             yValueEl.textContent = `${yRotationSlider.value}°`;
             zValueEl.textContent = `${zRotationSlider.value}°`;
             multValueEl.textContent = `${gyroMultiplierSlider.value}x`;
+            offsetValueEl.textContent = `${letterOffsetSlider.value}°`;
             
             baseX = parseFloat(xRotationSlider.value);
             baseY = parseFloat(yRotationSlider.value);
             baseZ = parseFloat(zRotationSlider.value);
             gyroMultiplier = parseFloat(gyroMultiplierSlider.value);
+            letterOffset = parseFloat(letterOffsetSlider.value);
             
             updateTextOrientation();
         }
@@ -443,8 +496,11 @@
         yRotationSlider.addEventListener('input', updateControlValues);
         zRotationSlider.addEventListener('input', updateControlValues);
         gyroMultiplierSlider.addEventListener('input', updateControlValues);
+        letterOffsetSlider.addEventListener('input', updateControlValues);
         invertXEl.addEventListener('change', updateTextOrientation);
         invertYEl.addEventListener('change', updateTextOrientation);
+        waveEffectEl.addEventListener('change', updateTextOrientation);
+        cascadeEffectEl.addEventListener('change', updateTextOrientation);
         
         function setEffect(effect) {
             switch(effect) {
@@ -453,32 +509,29 @@
                     yRotationSlider.value = 0;
                     zRotationSlider.value = 0;
                     gyroMultiplierSlider.value = 1;
+                    letterOffsetSlider.value = 5;
                     invertXEl.checked = true;
                     invertYEl.checked = false;
+                    waveEffectEl.checked = false;
+                    cascadeEffectEl.checked = false;
                     break;
-                case 'flat':
-                    xRotationSlider.value = -90;
+                case 'wave':
+                    letterOffsetSlider.value = 15;
+                    waveEffectEl.checked = true;
+                    cascadeEffectEl.checked = false;
+                    break;
+                case 'cascade':
+                    letterOffsetSlider.value = 20;
+                    waveEffectEl.checked = false;
+                    cascadeEffectEl.checked = true;
+                    break;
+                case 'spiral':
+                    xRotationSlider.value = 30;
                     yRotationSlider.value = 0;
                     zRotationSlider.value = 0;
-                    gyroMultiplierSlider.value = 1;
-                    invertXEl.checked = false;
-                    invertYEl.checked = false;
-                    break;
-                case 'billboard':
-                    xRotationSlider.value = 0;
-                    yRotationSlider.value = 0;
-                    zRotationSlider.value = 0;
-                    gyroMultiplierSlider.value = -1;
-                    invertXEl.checked = false;
-                    invertYEl.checked = true;
-                    break;
-                case 'floating':
-                    xRotationSlider.value = 45;
-                    yRotationSlider.value = 30;
-                    zRotationSlider.value = 0;
-                    gyroMultiplierSlider.value = 0.5;
-                    invertXEl.checked = false;
-                    invertYEl.checked = false;
+                    letterOffsetSlider.value = 30;
+                    waveEffectEl.checked = true;
+                    cascadeEffectEl.checked = true;
                     break;
             }
             updateControlValues();
@@ -496,6 +549,8 @@
         }
         
         function updateTextOrientation() {
+            animationTime += 0.05;
+            
             // Apply gyroscope values with multiplier
             let gyroX = deviceBeta * gyroMultiplier;
             let gyroY = deviceGamma * gyroMultiplier;
@@ -504,17 +559,38 @@
             if (invertXEl.checked) gyroX = -gyroX;
             if (invertYEl.checked) gyroY = -gyroY;
             
-            // Calculate final rotations
-            const xRotation = baseX + gyroX;
-            const yRotation = baseY + gyroY;
-            const zRotation = baseZ;
-            
-            // Apply transform
-            textWrapper.style.transform = `
-                rotateX(${xRotation}deg) 
-                rotateY(${yRotation}deg) 
-                rotateZ(${zRotation}deg)
-            `;
+            // Update each letter
+            letters.forEach((letter, index) => {
+                const offsetMultiplier = index - (letters.length - 1) / 2;
+                
+                let xRotation = baseX + gyroX;
+                let yRotation = baseY + gyroY;
+                let zRotation = baseZ;
+                
+                // Apply wave effect
+                if (waveEffectEl.checked) {
+                    xRotation += Math.sin(animationTime + index * 0.5) * letterOffset * 0.5;
+                    yRotation += Math.cos(animationTime + index * 0.5) * letterOffset * 0.3;
+                }
+                
+                // Apply cascade effect
+                if (cascadeEffectEl.checked) {
+                    xRotation += offsetMultiplier * letterOffset;
+                    yRotation += offsetMultiplier * letterOffset * 0.5;
+                    zRotation += offsetMultiplier * letterOffset * 0.3;
+                } else {
+                    // Regular offset
+                    xRotation += offsetMultiplier * letterOffset * 0.2;
+                    yRotation += offsetMultiplier * letterOffset * 0.1;
+                }
+                
+                // Apply transform
+                letter.element.style.transform = `
+                    rotateX(${xRotation}deg) 
+                    rotateY(${yRotation}deg) 
+                    rotateZ(${zRotation}deg)
+                `;
+            });
             
             updateStats();
         }
@@ -551,14 +627,23 @@
         }
         
         function showInterface() {
+            createLetters();
             startBtn.style.display = 'none';
-            textWrapper.style.display = 'block';
+            textWrapper.style.display = 'flex';
             staticText.style.display = 'block';
             controls.style.display = 'block';
             toggleControlsBtn.style.display = 'none';
             helpText.style.display = 'block';
             statusEl.textContent = 'Started';
             statusEl.style.color = '#4aff4a';
+            
+            // Start animation loop
+            animate();
+        }
+        
+        function animate() {
+            updateTextOrientation();
+            requestAnimationFrame(animate);
         }
         
         startBtn.addEventListener('click', startGyroscope);
